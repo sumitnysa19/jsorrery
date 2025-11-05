@@ -4,6 +4,10 @@ jsOrrery is a Solar System / orbital mechanics simulation, or orrery, that I wro
 
 See the project live at [orrery.com] (http://orrery.com). Thanks to [@neave] (https://twitter.com/neave) for the domain :)
 
+# Architecture & Internals
+
+For an overview of the system design, runtime flow, and how scenarios and bodies are modeled, see `docs/architecture.md`.
+
 # Usage
 
 The directory named `dist` contains the built app. The html file is an example of jsOrrery placed in a page. Basically, you link jsOrrery's js and css files in your HTML file and call the app.

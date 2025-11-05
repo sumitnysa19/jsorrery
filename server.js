@@ -25,6 +25,14 @@ var compiler;
 	app.use(express.static(__dirname + '/'));
 })();
 
+// Mount the Eyes app static server under /eyes
+try {
+    const eyesRouter = require('./eyes/app/server');
+    app.use('/eyes', eyesRouter);
+} catch (e) {
+    // Eyes app not available or failed to load; continue without it.
+}
+
 // Serve the generated index.html from webpack-dev-middleware (in-memory) in
 // development, otherwise fall back to static files on disk (`dist/index.html` or `src/index.html`).
 app.get('*', function root(req, res) {

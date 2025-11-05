@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Eyes Dev – Solar System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="robots" content="noindex" />
+    <link rel="stylesheet" type="text/css" href="./preload.css" />
+    <link rel="stylesheet" type="text/css" href="./vendor.css" />
+    <link rel="stylesheet" type="text/css" href="./app.css" />
+    <link rel="stylesheet" type="text/css" href="./dev.css" />
+    <style>
+      .dev-banner { position: fixed; z-index: 99999; top: 0; left: 0; right: 0; height: 28px; background: #232; color: #9f9; display: flex; align-items: center; padding: 0 8px; font: 12px/1.2 monospace; opacity: 0.9; }
+      .dev-banner a { color: #cff; text-decoration: underline; margin-left: 8px; }
+      body { padding-top: 28px; }
+    </style>
+  </head>
+  <body class="solar-system">
+    <div class="dev-banner">Dev build: uses production bundles plus dev modules (no runtime changes). <a href="./index.html">Go to production</a></div>
+    <div id="pioneer"></div>
+    <div id="ui" class="ui">
+      <div id="static-ui" class="ui grid-layout simple-grid"><Overlay></Overlay></div>
+      <div id="dynamic-ui" class="ui grid-layout simple-grid"></div>
+    </div>
+    <LoadIcon></LoadIcon>
+    <div id="loading-screen"></div>
+    <div id="embed-overlay"></div>
+
+    <script src="config.js"></script>
+    <script src="common.js"></script>
+    <!-- Keep existing preload + vendor + app so the main app runs unchanged -->
+    <script src="preload.js"></script>
+    <script src="vendor.js"></script>
+    <script src="app.js"></script>
+    <script src="api.js"></script>
+    <!-- Optional: ignore Dynamo loads and errors (no motion; limited visuals) -->
+    <script src="disable-dynamo.js"></script>
+
+    <!-- Dev-only modules; safe to import without altering production behavior -->
+    <script type="module">
+      import { PreloadManager } from './src/PreloadManager.js';
+      import SolarSystemAppShell from './src/app/SolarSystemApp.js';
+
+      // Demonstration: instantiate readable classes without affecting prod app
+      // Do NOT auto-init; prod app already started via app.js
+      window._EyesDev = {
+        PreloadManager,
+        SolarSystemAppShell,
+        startShell: async () => {
+          const shell = new SolarSystemAppShell();
+          const app = await shell.startDev();
+          return app;
+        }
+      };
+      console.log('[Eyes Dev] Modules loaded:', window._EyesDev);
+    </script>
+  </body>
+  </html>

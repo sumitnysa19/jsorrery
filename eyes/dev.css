@@ -1,0 +1,5 @@
+/* Dev-only CSS to avoid fetching missing local fonts and reduce console noise */
+html, body, .ui, .content, .panel, .menu, .tooltip, .title {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif !important;
+}
+

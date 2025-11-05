@@ -1,6 +1,6 @@
 
 import $ from 'jquery';
-import { Vector3, PerspectiveCamera } from 'three';
+import { Vector3, PerspectiveCamera, Raycaster } from 'three';
 import { OrbitControls } from '../utils/ThreeExamples';
 import ExportValues from '../gui/ExportValues';
 import { LOOKFROM_ID, LOOKAT_ID } from '../gui/Gui';
@@ -22,6 +22,7 @@ function getDistanceFromFov(dimToSee, fov) {
 
 export default class CameraManager {
 	constructor(sceneParam, aspect, fov, stageSize, container, universeParam, orbitLinesManager, tracerManager, gui) {
+		this.stageSize = stageSize;
 		this.gui = gui;
 		this.scene = sceneParam;
 		this.universe = universeParam;
@@ -57,6 +58,8 @@ export default class CameraManager {
 		
 		this.trackOptionSelectors.at.addOption('Direction of velocity', 'front');
 		this.trackOptionSelectors.at.addOption('Inverse direction of velocity', 'back');
+		// allow free/orbital camera to use the mouse cursor direction as a dynamic "look at" target
+		this.trackOptionSelectors.at.addOption('Mouse direction', 'mouse');
 
 	}
 
@@ -230,6 +233,53 @@ export default class CameraManager {
 
 	onMouseWheel = (event, delta) => {
 		const deltaDir = delta / Math.abs(delta);
+
+		// If free/orbital camera is selected and "Mouse direction" is the lookAt option,
+		// move the camera forward/backward along the ray under the mouse cursor instead of changing FOV.
+		if (this.viewSettings && this.viewSettings.lookFrom === ORBITAL_CAMERA_TYPE && this.viewSettings.lookAt === 'mouse') {
+			try {
+				// ensure camera world transform is up-to-date for accurate raycasting
+				if (this.currentCamera && this.currentCamera.updateMatrixWorld) this.currentCamera.updateMatrixWorld(true);
+				const el = this.domEl.get(0);
+				const rect = el.getBoundingClientRect();
+				const clientX = (event && event.clientX) || (event && event.pageX) || 0;
+				const clientY = (event && event.clientY) || (event && event.pageY) || 0;
+				const x = clientX - rect.left;
+				const y = clientY - rect.top;
+				const ndc = {
+					x: (x / rect.width) * 2 - 1,
+					y: -((y / rect.height) * 2 - 1),
+				};
+				// reuse a single raycaster instance on the camera manager
+				const raycaster = this._raycaster || (this._raycaster = new Raycaster());
+				raycaster.setFromCamera(ndc, this.currentCamera);
+				const dir = raycaster.ray.direction.clone();
+				if (!dir.length()) throw new Error('zero-length ray');
+				// distance-based step: proportional to camera distance to origin or stage size
+				const camDist = this.currentCamera.position.length() || (this.stageSize || 1);
+				const moveAmount = camDist * 0.05 * -deltaDir; // sign so wheel up moves forward
+				const moveVec = dir.normalize().multiplyScalar(moveAmount);
+				// move camera position
+				this.currentCamera.position.add(moveVec);
+				// if controls have a target, move it too so orbital controls remain centered
+				const controls = this.currentCamera.jsorrery && this.currentCamera.jsorrery.controls;
+				if (controls && controls.target) {
+					controls.target.add(moveVec);
+					// ensure controls internal state reflects the moved target
+					if (typeof controls.update === 'function') controls.update();
+				}
+				this.scene.draw();
+			} catch (e) {
+				// fallback to fov change
+				this.currentCamera.fov += this.currentCamera.fov * 0.1 * -deltaDir;
+				if (this.currentCamera.fov > MAX_FOV) this.currentCamera.fov = MAX_FOV;
+				this.currentCamera.updateProjectionMatrix();
+				this.scene.draw();
+			}
+			return;
+		}
+
+		// default behaviour: change FOV (zoom)
 		this.currentCamera.fov += this.currentCamera.fov * 0.1 * -deltaDir;
 		if (this.currentCamera.fov > MAX_FOV) this.currentCamera.fov = MAX_FOV;
 		this.currentCamera.updateProjectionMatrix();
