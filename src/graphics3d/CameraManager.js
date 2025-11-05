@@ -60,6 +60,8 @@ export default class CameraManager {
 
 	}
 
+
+
 	putDefaults(settings) {
 		// console.log(settings);
 		this.getCamera();
@@ -136,29 +138,32 @@ export default class CameraManager {
 		this.viewSettings.lookAt = this.trackOptionSelectors.at.getValue();
 		this.disableControls();
 
+
+
 		//deactivate geopos GUI
 		if (this.currentCamera && this.currentCamera.geoPos) this.currentCamera.geoPos.deactivate();
 		
 		//reset all bodies to use fastest position computation
 		this.setPrecision(false);
 
-		const lookFromBody = this.bodies3d[this.viewSettings.lookFrom];
+			const lookFromBody = this.bodies3d[this.viewSettings.lookFrom];
 		const lookAtBody = this.bodies3d[this.viewSettings.lookAt];
 		this.tracerManager.setTraceFrom();
 
-		if (lookFromBody) {
+			if (lookFromBody) {
 			this.currentCamera = lookFromBody.getCamera(POV_CAMERA_TYPE);
 			this.domEl.on('mousewheel', this.onMouseWheel);
 
 			//when looking from a body, we need max precision as a minor change in position changes the expected output (e.g. a bodie's position against the stars)
 			this.setPrecision(true);
 			
-			//if we look from a body to another, trace the lookat body's path relative to the pov UNLESS the look target is orbiting to the pov
-			if (lookAtBody && !lookAtBody.celestial.isOrbitAround(lookFromBody.celestial)) {
-				this.tracerManager.setTraceFrom(lookFromBody, lookAtBody);
-			}
+				//if we look from a body to another, trace the lookat body's path relative to the pov UNLESS the look target is orbiting to the pov
+				if (lookAtBody && !lookAtBody.celestial.isOrbitAround(lookFromBody.celestial)) {
+					this.tracerManager.setTraceFrom(lookFromBody, lookAtBody);
+				}
 
-			if (this.currentCamera.geoPos) this.currentCamera.geoPos.activate();
+				if (this.currentCamera.geoPos) this.currentCamera.geoPos.activate();
+
 
 		} else {
 			this.domEl.off('mousewheel');
@@ -188,8 +193,8 @@ export default class CameraManager {
 
 		if (typeof this.viewSettings.lookFrom === 'undefined') this.toggleCamera();
 
-		const lookFromBody = this.bodies3d[this.viewSettings.lookFrom];
 		const lookAtBody = this.bodies3d[this.viewSettings.lookAt];
+		const lookFromBody = this.bodies3d[this.viewSettings.lookFrom];
 		const controls = this.currentCamera.jsorrery && this.currentCamera.jsorrery.controls;
 
 		if (this.currentCamera.geoPos) this.currentCamera.geoPos.update();
@@ -199,14 +204,20 @@ export default class CameraManager {
 		} else if (this.viewSettings.lookFrom) {
 
 			if (lookAtBody) {
-				lookAt.copy(lookAtBody.getPosition()).sub(lookFromBody.getPosition());	
+				lookAt.copy(lookAtBody.getPosition()).sub(lookFromBody.getPosition());
 			} else if (this.viewSettings.lookAt === 'night') {
 				lookAt.copy(lookFromBody.getPosition());
 				lookAt.multiplyScalar(2);
 			} else if ('front,back'.indexOf(this.viewSettings.lookAt) !== -1) {
-				const vel = lookFromBody.celestial.movement;
-				lookAt.copy(vel).normalize();
-				if (this.viewSettings.lookAt === 'back') lookAt.negate();
+				// try to use celestial velocity when available; spacecraft has no celestial movement
+				const vel = (lookFromBody.celestial && lookFromBody.celestial.movement) ? lookFromBody.celestial.movement : null;
+				if (vel) {
+					lookAt.copy(vel).normalize();
+					if (this.viewSettings.lookAt === 'back') lookAt.negate();
+				} else {
+					// fallback: look towards origin
+					lookAt.set(0, 0, 0).sub(lookFromBody.getPosition());
+				}
 			} else {
 				lookAt.set(0, 0, 0).sub(lookFromBody.getPosition());
 			}

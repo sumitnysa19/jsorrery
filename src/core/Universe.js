@@ -36,6 +36,12 @@ export default class Universe {
 		this.name = scenario.name;
 		this.scenario = scenario;
 		this.ticker = new Ticker();
+		// target mapping: make one simulated Earth day (86400 s) complete in 86.4 real seconds
+		// => simulated seconds per real second = 86400 / 86.4 = 1000
+		// Use wall-clock time to drive the simulation so the behaviour is consistent across frame rates.
+		this.simSecondsPerRealSecond = 1000;
+		this._lastFrameTime = null;
+		this._lastSimDelta = null;
 		
 		const initialSettings = Object.assign({}, scenario.defaultGuiSettings, qstrSettings, scenario.forcedGuiSettings);
 		// console.log(initialSettings);
@@ -80,9 +86,11 @@ export default class Universe {
 
 		//delta T slider
 		this.gui.addSlider(DELTA_T_ID, scenario.secondsPerTick, (val) => {
-			// console.log(val, scenario.secondsPerTick);
+			// when user changes the GUI deltaT, update the ticker base value (timeScale still applied)
 			this.ticker.setSecondsPerTick(val);
 		});
+
+		// timeScale is hardcoded to 0.01 (slow-motion 100x) per user's request; UI control removed.
 
 		return onSceneReady;
 
@@ -103,7 +111,9 @@ export default class Universe {
 	}
 
 	getTickerDeltaT() {
-		return this.ticker.getDeltaT();
+		// return the simulated seconds advanced during the last frame if available,
+		// otherwise fall back to the ticker's configured secondsPerTick.
+		return (this._lastSimDelta != null) ? this._lastSimDelta : this.ticker.getDeltaT();
 	}
 
 	createBodies(scenario) {
@@ -259,18 +269,30 @@ export default class Universe {
 	tick = () => {
 
 		if (this.killed) return;
+
+		// compute real elapsed time since last animation frame
+		const now = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+		if (!this._lastFrameTime) this._lastFrameTime = now;
+		const realDeltaSec = (now - this._lastFrameTime) / 1000;
+		this._lastFrameTime = now;
+
 		if (this.playing) {
-			this.setJD(this.currentJD + (this.ticker.getDeltaT() / DAY));
-			this.ticker.tick(this.usePhysics, this.currentJD);
-			
+			// number of simulated seconds to advance this frame (sim seconds per real second * real seconds elapsed)
+			const effectiveDelta = realDeltaSec * (this.simSecondsPerRealSecond || 1);
+			this._lastSimDelta = effectiveDelta;
+
+			this.setJD(this.currentJD + (effectiveDelta / DAY));
+			// pass the effective delta to the ticker so physics/afterTick use the scaled value
+			this.ticker.tick(this.usePhysics, this.currentJD, effectiveDelta);
+
 			this.scene.updateCamera();
 			this.scene.draw();
 			this.showDate();
 		} else {
-			// console.log('draw...');
+			// keep lastFrameTime updated to avoid a huge jump when resuming playback
+			this._lastSimDelta = 0;
 			this.scene.updateCamera();
 			if (this.drawRequested) {
-				// console.log('draw', this.currentJD);
 				this.scene.draw();
 			}
 		}

@@ -17,6 +17,7 @@ export const LOOKAT_ID = 'lookAt';
 export const LOOKFROM_ID = 'lookFrom';
 export const DELTA_T_ID = 'deltaT';
 export const GEOLOC_ID = 'geoloc';
+// TIMESCALE_ID removed during revert; timeScale is kept internal to Universe (hardcoded to 0.01)
 
 function hideContent(content) {
 	TweenMax.killTweensOf(content);

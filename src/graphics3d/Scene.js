@@ -78,6 +78,7 @@ export default class JSOrreryScene {
 
 		//this.drawAxis();
 		this.cameraManager = new CameraManager(this, this.width / this.height, scenario.fov, this.stageSize, this.domEl, universe, this.orbitLinesManager, this.tracerManager, gui);
+		// spacecraft has been removed (revert). CameraManager no longer registers spacecraft.
 		this.labels = new Labels(this.domEl, this.cameraManager);
 
 		this.setMilkyway();
@@ -112,6 +113,8 @@ export default class JSOrreryScene {
 	draw() {
 		// console.log('draw');
 		this.bodies3d.forEach(drawBody);
+
+			// (spacecraft removed) no per-frame spacecraft update
 
 		//after all bodies have been positionned, update camera matrix (as camera might be attached to a body)
 		this.cameraManager.updateCameraMatrix();

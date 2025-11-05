@@ -44,18 +44,36 @@ export default class Ticker {
 		}
 	}
 	
-	tick(computePhysics, jd) {
-		if (computePhysics) {
-			this.moveByGravity(jd - (this.secondsPerTick / DAY));
+	tick(computePhysics, jd, secondsPerTickOverride) {
+		// allow calling code to temporarily override the effective secondsPerTick
+		const localSecondsPerTick = (typeof secondsPerTickOverride !== 'undefined') ? secondsPerTickOverride : this.secondsPerTick;
+		let localActualCalculationsPerTick;
+		let localDeltaTIncrement;
+
+		// compute local deltaT increment similar to setDT logic
+		if (!this.calculationsPerTick || !localSecondsPerTick) return 0;
+		if (localSecondsPerTick < this.calculationsPerTick) {
+			localActualCalculationsPerTick = localSecondsPerTick;
 		} else {
-			this.moveByElements(jd);
+			localActualCalculationsPerTick = this.calculationsPerTick;
+		}
+		localDeltaTIncrement = localSecondsPerTick / localActualCalculationsPerTick;
+
+		if (computePhysics) {
+			for (let t = 1; t <= localActualCalculationsPerTick; t++) {
+				this.integration.moveBodies(jd + (t * localDeltaTIncrement) / DAY, localDeltaTIncrement);
+			}
+		} else {
+			for (let i = 0; i < this.bodies.length; i++) {
+				this.bodies[i].setPositionFromJD(jd);
+			}
 		}
 
 		for (let i = 0; i < this.bodies.length; i++) {
-			this.bodies[i].afterTick(this.secondsPerTick, !computePhysics);
-		}/**/
-		
-		return this.secondsPerTick;
+			this.bodies[i].afterTick(localSecondsPerTick, !computePhysics);
+		}
+
+		return localSecondsPerTick;
 	}
 	
 	setBodies(b) {
